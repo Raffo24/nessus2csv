@@ -22,12 +22,20 @@ from lxml import etree
 import csv
 import sys
 
+severityGrade = {
+    "0" : "Info",
+    "1" : "Low",
+    "2" : "Medium",
+    "3" : "High",
+    "4" : "Critical"
+}
+
 def rec(tree, dic):
     if tree.getchildren() == []:
         dic.setdefault(tree.tag,tree.text.replace("CVSS2#","").replace("CVSS:3.0/",""))
         return
     if tree.tag == "ReportItem":
-        dic.setdefault("severity",tree.attrib["severity"])
+        dic.setdefault("severity",severityGrade[tree.attrib["severity"]])
         dic.setdefault("port",tree.attrib['port'])
         dic.setdefault("protocol",tree.attrib['protocol'])
         dic.setdefault("service",tree.attrib['svc_name'])
@@ -70,6 +78,7 @@ if sys.argv[1] == "-h" or sys.argv[1] == "--help":
     exit(1)
 # DEBUG debug_var = {}
 # riorganizza i dati
+i = -1
 with open(sys.argv[1], 'rb') as xmlfile:
     root = etree.fromstring(text=xmlfile.read(), parser=etree.XMLParser(huge_tree=True))
     for reportHost in root.getchildren()[1].getchildren():
@@ -77,7 +86,8 @@ with open(sys.argv[1], 'rb') as xmlfile:
         hostDict.setdefault("name", reportHost.attrib['name'])
         for child in reportHost[0]:
             hostDict.setdefault(child.get('name') if child.get('name') != "sinfp-ml-prediction" else "OS-prediction",child.text)
-        for i, vuln in enumerate(reportHost[1:]):
+        for vuln in reportHost[1:]:
+            i += 1
             dicVuln = {} # dizionario che contiene i dati di una determinata vulnerabilità
             rec(vuln, dicVuln)
             out.append({})
@@ -100,8 +110,6 @@ with open(sys.argv[1], 'rb') as xmlfile:
     csv_writer.writerow(campi)
     # sort dict "out" by key
     for scan in out:
-        if scan == {}:
-            continue
         csv_writer.writerow([s.encode('unicode_escape').decode() for s in dict(sorted(scan.items(), key = lambda x : campi.index(x[0]))).values()])
     file_out.close()
     print(f"File {sys.argv[1]}.csv creato con successo!")
