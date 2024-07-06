@@ -30,6 +30,18 @@ severityGrade = {
     "4" : "Critical"
 }
 
+def calcSev(val):
+    if val >= 9.0:
+        return "Critical"
+    elif val >= 7.0:
+        return "High"
+    elif val >= 5.0:
+        return "Medium"
+    elif val >= 0.1:
+        return "Low"
+    else:
+        return "Info"
+
 def rec(tree, dic):
     if tree.getchildren() == []:
         dic.setdefault(tree.tag,tree.text.replace("CVSS2#","").replace("CVSS:3.0/",""))
@@ -67,7 +79,7 @@ campi = [
          "plugin_name",
          "plugin_output",
          "OS-prediction" 
-         ]
+        ]
 out = []
 n = len(sys.argv)
 if n < 2:
@@ -100,16 +112,19 @@ with open(sys.argv[1], 'rb') as xmlfile:
                     z = str(x[1])
                     out[i].setdefault(str(x[0]),z if z != "" else "n/a")
             # aggiunge i campi che non sono stati trovati / motivazione --> design del codice
+            if "cvss3_base_score" in out[i].keys():
+                out[i]["severity"] = calcSev(float(out[i]["cvss3_base_score"]))
             for x in campi:
                 if x not in out[i]:
                     out[i].setdefault(x,"n/a")
+            
     # DEBUG print(debug_var.keys())
     # write csv in output
-    file_out = open(sys.argv[1] + ".csv", 'w', encoding='utf-8', newline='')
+    file_out = open(sys.argv[1][:-7] + ".csv", 'w', encoding='utf-8', newline='')
     csv_writer = csv.writer(file_out, delimiter =';')
     csv_writer.writerow(campi)
     # sort dict "out" by key
     for scan in out:
         csv_writer.writerow([s.encode('unicode_escape').decode() for s in dict(sorted(scan.items(), key = lambda x : campi.index(x[0]))).values()])
     file_out.close()
-    print(f"File {sys.argv[1]}.csv creato con successo!")
+    print(f"File {sys.argv[1][:-7]}.csv creato con successo!")
